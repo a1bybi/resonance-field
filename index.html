@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <title>Resonance Field — an instrument of light and gravity</title>
+    <meta
+      name="description"
+      content="A one-thumb, physics-driven mobile game. Expand, contract and move a living energy field to gather particles into resonance. Playable offline."
+    />
+    <meta name="theme-color" content="#06060c" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Resonance Field" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://api.fontshare.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./css/style.css" />
+  </head>
+  <body>
+    <canvas id="stage" aria-label="Resonance Field play area"></canvas>
+    <div class="vignette" aria-hidden="true"></div>
+    <div id="flash" class="flash" aria-hidden="true"></div>
+
+    <!-- ───────────────────────── HUD ───────────────────────── -->
+    <div id="hud" class="hud is-hidden" aria-live="off">
+      <div class="hud__top">
+        <div class="score-block">
+          <div class="score-block__label">SCORE</div>
+          <div class="score-block__value"><span id="score">0</span></div>
+          <div class="coherence" id="coherenceWrap">
+            <div class="coherence__track"><div class="coherence__fill" id="coherenceFill"></div></div>
+            <div class="coherence__meta">
+              <span id="coherenceLabel">COHERENCE</span>
+              <span id="bestInline" class="coherence__best">BEST 0</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="hud__tools">
+          <button id="soundBtn" class="icon-btn" type="button" aria-label="Toggle sound">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path class="spk" d="M4 9.5h3.2L12 5.4v13.2L7.2 14.5H4z" />
+              <path class="wave" d="M15.4 9.2a4 4 0 0 1 0 5.6M18 6.6a7.6 7.6 0 0 1 0 10.8" />
+              <path class="mute" d="M15.5 9.5l5 5m0-5l-5 5" />
+            </svg>
+          </button>
+          <button id="pauseBtn" class="icon-btn" type="button" aria-label="Pause">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M9 5.5v13M15 5.5v13" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div id="chainBadge" class="chain">
+        <span class="chain__x">×</span><span id="chainValue">2</span>
+        <span class="chain__label">CHAIN</span>
+      </div>
+
+      <div id="hint" class="hint">Hold to bloom the field</div>
+
+      <button id="modeBtn" class="mode-btn" type="button" data-mode="attract" aria-label="Field mode: attract. Tap to change.">
+        <span class="mode-btn__ring" aria-hidden="true"></span>
+        <svg class="mode-btn__icon" viewBox="0 0 24 24" aria-hidden="true">
+          <g class="g-attract">
+            <path d="M8.5 8.5l-3 3.5 3 3.5M15.5 8.5l3 3.5-3 3.5" />
+            <circle cx="12" cy="12" r="1.4" />
+          </g>
+          <g class="g-repel">
+            <path d="M5.5 8.5l3 3.5-3 3.5M18.5 8.5l-3 3.5 3 3.5" />
+            <circle cx="12" cy="12" r="1.4" />
+          </g>
+          <g class="g-neutral">
+            <circle cx="12" cy="12" r="5.4" stroke-dasharray="2.6 3" />
+            <circle cx="12" cy="12" r="1.4" />
+          </g>
+        </svg>
+        <span id="modeLabel" class="mode-btn__label">ATTRACT</span>
+      </button>
+
+      <div class="freq-chip" id="freqChip" aria-hidden="true">
+        <span class="freq-chip__dot" id="freqDot"></span>
+        <span id="freqName">TUNED · I</span>
+      </div>
+    </div>
+
+    <!-- ───────────────────────── START ───────────────────────── -->
+    <div id="startScreen" class="screen screen--start">
+      <div class="start__inner">
+        <div class="eyebrow">An instrument of light and gravity</div>
+        <h1 class="title">Resonance <em>Field</em></h1>
+        <p class="lede">
+          Gather drifting particles into a singing cluster. Hold to bloom, drag to carry,
+          and shift polarity when the dissonance closes in.
+        </p>
+
+        <div class="segmented" role="tablist" aria-label="Game mode">
+          <button class="segmented__opt is-active" data-runmode="endless" role="tab" aria-selected="true">
+            Endless
+          </button>
+          <button class="segmented__opt" data-runmode="zen" role="tab" aria-selected="false">
+            Zen field
+          </button>
+        </div>
+
+        <button id="beginBtn" class="btn-primary" type="button">
+          <span>Begin</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6.5l5.5 5.5-5.5 5.5" /></svg>
+        </button>
+
+        <div class="legend">
+          <div class="legend__row"><b>Hold</b><span>expand the field</span></div>
+          <div class="legend__row"><b>Drag</b><span>move its center</span></div>
+          <div class="legend__row"><b>Double tap</b><span>attract · repel · neutral</span></div>
+        </div>
+
+        <div class="footer-row">
+          <div class="swatches" role="group" aria-label="Visual theme">
+            <button class="swatch is-active" data-theme="aurora" aria-label="Aurora theme"><i></i></button>
+            <button class="swatch" data-theme="ember" aria-label="Ember theme"><i></i></button>
+            <button class="swatch" data-theme="abyss" aria-label="Abyss theme"><i></i></button>
+          </div>
+          <div class="status" id="statusLine">Sound on · best 0</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ───────────────────────── PAUSE ───────────────────────── -->
+    <div id="pauseScreen" class="screen screen--modal is-hidden">
+      <div class="card card--pause">
+        <div class="eyebrow">Field suspended</div>
+        <h2 class="card__title">Paused</h2>
+        <div class="card__actions">
+          <button id="resumeBtn" class="btn-primary btn-primary--sm" type="button"><span>Resume</span></button>
+          <button id="restartBtn" class="btn-ghost" type="button">Restart run</button>
+          <button id="quitBtn" class="btn-ghost" type="button">Back to title</button>
+        </div>
+        <p class="card__foot">Hold to bloom · release to settle · double tap to shift polarity</p>
+      </div>
+    </div>
+
+    <!-- ───────────────────────── GAME OVER ───────────────────────── -->
+    <div id="overScreen" class="screen screen--modal is-hidden">
+      <div class="card card--over">
+        <div class="eyebrow" id="overEyebrow">The field settles</div>
+        <h2 class="card__title" id="overTitle">Run complete</h2>
+        <div class="final">
+          <div class="final__label">SCORE</div>
+          <div class="final__score" id="finalScore">0</div>
+          <div class="final__best" id="finalBest">BEST 0</div>
+        </div>
+        <div class="stats">
+          <div class="stat"><b id="statChain">0</b><span>longest chain</span></div>
+          <div class="stat"><b id="statReso">0</b><span>resonances</span></div>
+          <div class="stat"><b id="statTime">0:00</b><span>duration</span></div>
+        </div>
+        <div class="card__actions">
+          <button id="againBtn" class="btn-primary" type="button"><span>Again</span></button>
+          <button id="menuBtn" class="btn-ghost" type="button">Title screen</button>
+        </div>
+        <p class="card__foot" id="overTip">Tip: switch to Neutral to hold a cluster without crushing it.</p>
+      </div>
+    </div>
+
+    <noscript>Resonance Field needs JavaScript enabled.</noscript>
+    <script src="./js/audio.js" defer></script>
+    <script src="./js/game.js" defer></script>
+  </body>
+</html>

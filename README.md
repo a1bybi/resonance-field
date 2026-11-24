@@ -1,0 +1,232 @@
+# Resonance Field
+
+**An instrument of light and gravity.** A one-thumb, physics-driven browser game: hold to
+expand a living energy field, release to contract, drag to carry it, and shift polarity to
+gather drifting particles into singing clusters. Runs offline as an installable PWA.
+No accounts, no ads, no build step.
+
+- **Play:** open `index.html` through any static server (see below)
+- **Size:** ~85 KB of HTML/CSS/JS (no framework, no audio files, two web fonts)
+- **Target:** modern mobile browsers first (iOS Safari 16+, Chrome Android), desktop second
+- **Licence:** MIT
+
+---
+
+## Run it locally
+
+Any static file server works. From this folder:
+
+```bash
+npx serve .            # then open the printed http://localhost:3000
+# or
+python3 -m http.server 3000
+```
+
+Then visit `http://localhost:3000`. Opening `index.html` directly from the filesystem
+(`file://`) works for a quick look, but the service worker and the manifest require
+`http://` or `https://`, so offline install only works when the game is served.
+
+### Install as an app
+
+Serve over HTTPS (or `localhost`), open it, then:
+
+- **iOS Safari:** Share → Add to Home Screen
+- **Chrome / Edge Android:** menu → Install app / Add to Home screen
+
+Once installed it launches full-screen and plays with no network connection.
+
+### Deploy
+
+It is a static site — drop the folder on Netlify, Vercel, Cloudflare Pages, GitHub Pages or
+any web server. The only requirement is HTTPS for the PWA parts. `index.html` must be at the
+site root so `./sw.js` and `./manifest.webmanifest` resolve.
+
+---
+
+## Controls
+
+| Action | Touch | Mouse | Keyboard |
+| --- | --- | --- | --- |
+| Expand / strengthen the field | press and hold | press and hold | — |
+| Contract | release | release | — |
+| Move the field | drag | move with button held | — |
+| Cycle field mode (attract → repel → neutral) | double tap, or the mode button | double click / mode button | `m` |
+| Pause | pause button (top right) | same | `p` or `Esc` |
+| Resume | tap resume | click | `p`, `Esc` or `Enter` |
+| Restart after a run | large **Again** button | same | `Enter` |
+| Mute | speaker button | same | — |
+
+No keyboard is required for play; the key bindings are a desktop convenience.
+
+## How to play
+
+Everything orbits one idea: **resonance pays, dissonance drains**.
+
+- **Harmonics** (four colours = four frequencies) sing when two or more of the *same*
+  frequency sit close together inside your field. Hold them there and a bloom fires: score
+  scales with how many objects joined and how long you sustained it, and each bloom in a
+  quick chain multiplies the next.
+- **Neutrals** are convertible — they resonate with anything and build charge 45% faster.
+  Treat them as glue.
+- **Dissonants** are the wrong note. They push away, resist, and drain coherence when they
+  crowd your core. Switch to **Repel** to shove them out, or leave them alone.
+- **Core Echoes** are rare bright motes. Sweep the field through one for a big multiplier
+  and a chunk of coherence back.
+- **Hazards** (spikes, wells) are pulled toward a large field. Keep the field small near
+  them; the deeper the field is expanded, the harder they home in.
+- **Coherence** is your life. It drains slowly, faster over time, and much faster when
+  dissonants or hazards sit in your core. Blooms give some back.
+
+The run usually ends with *almost* rather than *sudden*: coherence fades, the screen dims,
+and the field settles.
+
+### Modes
+
+- **Endless Resonance** — the main mode, escalating pressure, one high score.
+- **Zen Field** — same physics, coherence never drains, no failures. For practice and for
+  playing with the instrument.
+- **Daily Pulse** and **Resonance Trials** are designed in the GDD but not in this build
+  (see [Roadmap](#roadmap)).
+
+### Scoring
+
+| Source | Points |
+| --- | --- |
+| Resonance bloom | `26 × group size × chain multiplier` (multiplier caps at 5) |
+| Core Echo | `180 × chain multiplier` |
+| Style / near-miss bonuses | small, awarded on tight sweeps |
+
+Chain multiplier grows by 0.3 per consecutive bloom and decays after ~1.7 s without one.
+Progression is cosmetic only: field themes (Aurora, Ember, Abyss) are chosen on the title
+screen and remembered locally.
+
+---
+
+## Architecture
+
+```
+resonance-field/
+├── index.html            # markup, HUD, screens, SVG iconography
+├── css/style.css         # design tokens, glass panels, responsive rules
+├── js/audio.js           # RF.Audio — generative Web Audio engine
+├── js/game.js            # engine: state, input, physics, resonance, render, loop
+├── sw.js                 # service worker (network-first, cache fallback)
+├── manifest.webmanifest  # PWA manifest
+├── icons/                # SVG app icons (any + maskable)
+└── README.md, LICENSE, CONTRIBUTING.md, progress.md
+```
+
+`js/game.js` is one IIFE split into numbered sections (utilities, configuration, canvas and
+sprites, state, DOM, input, entities, simulation, rendering, loop). Key ideas:
+
+- **Fixed-ish timestep.** The loop accumulates real time and steps the simulation at
+  1/60 s, so physics behaves the same on 60 Hz and 120 Hz screens.
+- **Field as a force, not a container.** Each entity feels `attract` or `repel` force
+  scaled by `(r / maxR)²`, so expanding changes the *character* of the field, not just its
+  size. Dissonants invert the sign; neutrals feel no force but resonate faster.
+- **Resonance as a graph problem.** Every frame, entities of the same frequency that are
+  both inside the field and within reach of each other are linked. Charge accrues at
+  `links × 0.52` per second; at 1.0 the connected group fires as one bloom.
+- **Cached rendering layers.** Starfield, background gradient and the nebula are baked into
+  offscreen canvases (nebula at half resolution) and only rebuilt on resize or theme change.
+  Glow sprites are pre-rendered, so the per-frame cost is draw calls and cheap alpha, not
+  blur filters.
+- **Object pools.** Particles, floating score text and ripples are pooled; gameplay never
+  allocates in the hot loop.
+
+### Tuning constants
+
+All gameplay numbers live in the configuration section of `js/game.js` (search for the
+block marked `2. Configuration`) plus the local constants in each simulation function.
+The ones you will most likely want to touch:
+
+| Constant | Where | Meaning |
+| --- | --- | --- |
+| `FREQS` | config | The four frequencies: name, colour, audio root |
+| `THEMES` | config | Background nebulae and star tint per theme |
+| `MAX_ENTITIES` / `MAX_PARTICLES` | config | Hard caps for object pools |
+| `baseR`, `maxR` | `resize()` | Field radius at rest and fully bloomed |
+| `hold` ramp (0.55 s / 0.28 s) | input | How fast the field blooms and collapses |
+| `drain` in `updateCoherence()` | simulation | Base coherence loss per second |
+| `+10`, `+34`, `>38` | `updateCoherence()` | Dissonant, hazard and overgrowth penalties |
+| `26 × group × mult` | `fireResonance()` | Bloom scoring |
+| `0.52` link rate, `1.7 s` cooldown | resonance | Chain pacing |
+
+### Audio
+
+`js/audio.js` synthesises everything at runtime — no samples. A four-voice detuned pad sits
+under a filtered noise "air" layer, feeding a generated convolution reverb and a limiter.
+Bloom tones are drawn from a minor pentatonic scale whose root shifts per frequency, so
+clusters of different colours form consonant chords by construction. The pad filter opens
+and sparse bells appear as your score climbs. The `AudioContext` is created on the first
+user gesture, so nothing plays before a tap.
+
+### Storage
+
+Best score, Zen best and the selected theme are stored in **one small cookie** (`rf_v1`,
+one year, `SameSite=Lax`) by the `Save` adapter at the top of `js/game.js`. If cookies are
+blocked — sandboxed iframes, some private modes — the adapter silently falls back to
+in-memory values for the session, and the game plays identically without persistence.
+Nothing else is stored, nothing is sent anywhere, and there are no third-party scripts.
+
+> The GDD specifies `localStorage`. Cookies are used instead so the game also persists in
+> embedded/preview contexts that block `localStorage`; swap the two `Save` methods for
+> `localStorage.getItem/setItem` if you prefer the original design.
+
+### Offline / PWA
+
+`sw.js` is network-first with a cache fallback: online you always get the freshest build,
+offline you get the cached shell. It precaches the HTML, CSS, JS, manifest and icons on
+install; fonts are cached the first time they are fetched. Bump the `CACHE` name when you
+ship a breaking change to force a clean slate.
+
+---
+
+## Accessibility & performance notes
+
+- All tap targets are at least 44 px; the mode button and pause button sit in thumb reach.
+- HUD text is `aria-live="off"` for scores and the queue is throttled, so screen readers
+  are not spammed during play.
+- Colour is never the only signal: frequencies also differ in edge style and audio pitch.
+- `prefers-reduced-motion` dampens shake, flash and particle counts.
+- Geometry uses device-pixel-ratio capped at 2, so 3× phones render at 2× rather than
+  paying 9× fill cost.
+- Layout verified without overflow at 320×568, 375×667, 390×844, 844×390 and 1440×900.
+
+## Testing
+
+The build exposes a small harness for automated checks:
+
+```js
+render_game_to_text()   // JSON snapshot: phase, score, coherence, field, entities
+advanceTime(ms)         // step the simulation deterministically
+__rf.start('endless')   // start a run
+__rf.setMode('repel')   // change mode
+__rf.spawn('harmonic', 0, x, y)
+__rf.setCoherence(100)  // 0–100 scale
+__rf.persist(); __rf.save.read()
+```
+
+These hooks are inert for players and useful for Playwright scripts. If you fork this for a
+commercial build, strip them.
+
+## Roadmap
+
+From the GDD's nice-to-have list, still open:
+
+- Daily Pulse (seeded 60–90 s run with a shareable result)
+- Resonance Trials (hand-authored levels with objectives)
+- Shareable score cards (canvas → PNG → Web Share API)
+- Unlockable instruments and particle sets (themes exist; unlock flow does not)
+- Save export/import as a short code
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). Bug reports and small, focused pull requests are
+welcome; keep the zero-dependency, no-build constraint.
+
+## Licence
+
+MIT — see [LICENSE](LICENSE). The two web fonts (Instrument Serif, Satoshi) load from
+Google Fonts and Fontshare and keep their own licences; the game falls back to system serif
+and sans if they are unavailable.
