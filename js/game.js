@@ -1562,10 +1562,20 @@
     startRun(runMode);
   });
   el.pauseBtn.addEventListener('click', doPause);
-  el.soundBtn.addEventListener('click', function () {
-    setAudio(!audioOn);
+  /* Toggling sound is also the easiest way for a player to check the game is
+     making noise, so turning it on answers with a two-note confirmation. */
+  function toggleAudio() {
     RF.Audio.init();
-  });
+    setAudio(!audioOn);
+    if (audioOn) {
+      RF.Audio.ui();
+      setTimeout(function () {
+        RF.Audio.ui();
+      }, 120);
+    }
+  }
+
+  el.soundBtn.addEventListener('click', toggleAudio);
 
   document.querySelectorAll('[data-runmode]').forEach(function (btn) {
     btn.addEventListener('click', function () {
@@ -1594,10 +1604,7 @@
     });
   });
 
-  el.statusLine.addEventListener('click', function () {
-    setAudio(!audioOn);
-    RF.Audio.init();
-  });
+  el.statusLine.addEventListener('click', toggleAudio);
 
   window.addEventListener('resize', resize);
   window.addEventListener('orientationchange', function () {

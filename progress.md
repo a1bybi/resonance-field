@@ -62,6 +62,17 @@ see the Roadmap section of the README.
 - Auto-pause when the page is hidden, so a call or a tab switch no longer costs a run.
 - Optional haptics: bloom tap, hazard buzz, three-beat pulse at the end of a run.
 
+## Audio fix after first release
+
+Reported as "music doesn't seem to work". Measured the graph by tapping the master with an
+analyser: the context was running and producing signal, but 93% of the energy sat below
+300 Hz — a bass-heavy pad that a phone speaker barely reproduces. The pad was re-voiced into
+the 220–660 Hz range, given a 140 Hz high-pass, and joined by a slow arpeggio in the
+400–1300 Hz octave; bloom, echo and bell levels came up. A 400 Hz high-passed measurement
+now reads RMS ≈ 0.08 (previously near silence), which is the check worth repeating after any
+mix change. Toggling sound on now plays a two-note confirmation so players can verify audio
+in one tap.
+
 ## Known limitations
 
 - Fonts load from Google Fonts and Fontshare; first paint uses system fallbacks, and full

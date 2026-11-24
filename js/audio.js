@@ -22,6 +22,8 @@ RF.Audio = (function () {
   var enabled = true;
   var lastDamage = 0;
   var shimmerTimer = 0;
+  var arpTimer = 1.2;
+  var arpStep = 0;
 
   // Minor pentatonic — every object frequency maps onto this scale.
   var SCALE = [0, 3, 5, 7, 10];
@@ -59,17 +61,29 @@ RF.Audio = (function () {
 
     padFilter = ctx.createBiquadFilter();
     padFilter.type = 'lowpass';
-    padFilter.frequency.value = 520;
+    padFilter.frequency.value = 1100;
     padFilter.Q.value = 0.6;
 
-    padGain.connect(padFilter);
+    var padHP = ctx.createBiquadFilter();
+    padHP.type = 'highpass';
+    padHP.frequency.value = 140;
+    padHP.Q.value = 0.6;
+
+    padGain.connect(padHP);
+    padHP.connect(padFilter);
     padFilter.connect(dry);
 
+    /* The bed lives in the 110–520 Hz octaves on purpose: a phone speaker rolls
+       off below ~250 Hz, so a sub-bass pad reads as silence on the device most
+       people will play on. The 55 Hz voice stays, but only as body for
+       headphones, and the high-pass above keeps it from eating headroom. */
     var voices = [
-      { f: 55.0, type: 'sine', g: 0.34 },
-      { f: 82.41, type: 'sine', g: 0.16 },
-      { f: 110.0, type: 'triangle', g: 0.1 },
-      { f: 164.81, type: 'sine', g: 0.05 },
+      { f: 220.0, type: 'sine', g: 0.17 },      // A3 — the body of the bed
+      { f: 329.63, type: 'triangle', g: 0.17 }, // E4 — the fifth that sings on small speakers
+      { f: 440.0, type: 'sine', g: 0.14 },      // A4 — air
+      { f: 554.37, type: 'triangle', g: 0.06 }, // C#5 — a little colour
+      { f: 110.0, type: 'sine', g: 0.13 },      // A2 — weight on headphones
+      { f: 55.0, type: 'sine', g: 0.05 },       // A1 — a whisper of sub
     ];
 
     voices.forEach(function (v, i) {
@@ -111,7 +125,7 @@ RF.Audio = (function () {
     airGain.connect(dry);
     air.start();
 
-    padGain.gain.setTargetAtTime(0.5, ctx.currentTime, 2.2);
+    padGain.gain.setTargetAtTime(0.44, ctx.currentTime, 1.6);
   }
 
   function init() {
@@ -201,18 +215,18 @@ RF.Audio = (function () {
     var steps = Math.min(4, Math.max(2, count));
     var offset = Math.min(9, (chain - 1) * 2);
     for (var i = 0; i < steps; i++) {
-      noteAt(freqIndex, offset + i, t + i * 0.055, 0.9 - i * 0.1, 0.11, i % 2 ? 'triangle' : 'sine');
+      noteAt(freqIndex, offset + i, t + i * 0.055, 0.9 - i * 0.1, 0.16, i % 2 ? 'triangle' : 'sine');
     }
     // soft glassy overtone
-    noteAt(freqIndex, offset + 5, t + 0.04, 1.6, 0.035, 'sine');
+    noteAt(freqIndex, offset + 5, t + 0.04, 1.6, 0.055, 'sine');
   }
 
   /* Echo pickup — a bright two-note chime. */
   function collect() {
     if (!ctx || !enabled) return;
     var t = now() + 0.01;
-    voice(dry, 1318.5, 'sine', t, 0.5, 0.09);
-    voice(dry, 1975.5, 'sine', t + 0.07, 0.7, 0.06);
+    voice(dry, 1318.5, 'sine', t, 0.5, 0.13);
+    voice(dry, 1975.5, 'sine', t + 0.07, 0.7, 0.09);
     if (reverbSend) voice(reverbSend, 2637, 'sine', t + 0.07, 1.1, 0.05);
   }
 
@@ -253,7 +267,7 @@ RF.Audio = (function () {
   function ui() {
     if (!ctx || !enabled) return;
     var t = now();
-    voice(dry, 880, 'sine', t, 0.14, 0.05);
+    voice(dry, 880, 'sine', t, 0.14, 0.07);
     voice(reverbSend, 1320, 'sine', t, 0.2, 0.03);
   }
 
@@ -278,13 +292,26 @@ RF.Audio = (function () {
     if (!ctx || !started) return;
     shimmerTimer -= dt;
     if (shimmerTimer <= 0) {
-      shimmerTimer = 4.5 + Math.random() * 4;
+      shimmerTimer = 3.2 + Math.random() * 3.4;
       var freqIndex = Math.floor(Math.random() * 4);
       var deg = Math.floor(Math.random() * 5) + 3;
-      noteAt(freqIndex, deg, now() + 0.02, 2.6, 0.022, 'sine');
+      noteAt(freqIndex, deg, now() + 0.02, 2.6, 0.05, 'sine');
+    }
+
+    /* A slow arpeggio in the 400–1300 Hz octave. It is the part of the score
+       that stays audible on a phone speaker, where anything below ~400 Hz
+       barely comes through. */
+    arpTimer -= dt;
+    if (arpTimer <= 0) {
+      arpTimer = 1.9 + Math.random() * 1.1;
+      var arpFreq = Math.floor(Math.random() * 4);
+      var arpDeg = 5 + ((arpStep + Math.floor(Math.random() * 3)) % 5);
+      noteAt(arpFreq, arpDeg, now() + 0.03, 1.5, 0.075, arpStep % 2 ? 'triangle' : 'sine');
+      if (reverbSend) noteAt(arpFreq, arpDeg + 2, now() + 0.05, 1.9, 0.03, 'sine');
+      arpStep = (arpStep + 1) % 5;
     }
     if (padFilter) {
-      var target = 420 + intensity * 900;
+      var target = 900 + intensity * 1500;
       padFilter.frequency.setTargetAtTime(target, now(), 0.8);
     }
   }

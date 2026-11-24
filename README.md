@@ -170,12 +170,18 @@ The ones you will most likely want to touch:
 
 ### Audio
 
-`js/audio.js` synthesises everything at runtime — no samples. A four-voice detuned pad sits
+`js/audio.js` synthesises everything at runtime — no samples. A six-voice detuned pad sits
 under a filtered noise "air" layer, feeding a generated convolution reverb and a limiter.
 Bloom tones are drawn from a minor pentatonic scale whose root shifts per frequency, so
-clusters of different colours form consonant chords by construction. The pad filter opens
-and sparse bells appear as your score climbs. The `AudioContext` is created on the first
-user gesture, so nothing plays before a tap.
+clusters of different colours form consonant chords by construction. A slow arpeggio and
+sparse bells sit in the 400–1300 Hz octave; the pad filter opens as your score climbs. The
+`AudioContext` is created on the first user gesture, so nothing plays before a tap.
+
+The mix is voiced deliberately high: a phone speaker rolls off sharply below roughly 400 Hz,
+so a bass-heavy ambient bed reads as "no sound at all" on the device most players use. The
+pad's weight sits at 220–660 Hz, the sub voices are trimmed, and the high-passed level
+(RMS ≈ 0.08 at 400 Hz) is what to check if you retune it — not the raw output level, which
+is dominated by low frequencies you cannot hear on a phone.
 
 ### Storage
 
