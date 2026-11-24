@@ -55,6 +55,13 @@ see the Roadmap section of the README.
 - No document overflow at 320×568, 375×667, 390×844, 844×390, 1440×900.
 - Text legible (OCR) and colour present on title, play, pause and game-over at both sizes.
 
+## Additions after the first push
+
+- Screenshots and a 1200×630 link-preview card captured from the real build (`media/`), wired into
+  the README and into Open Graph / Twitter meta tags.
+- Auto-pause when the page is hidden, so a call or a tab switch no longer costs a run.
+- Optional haptics: bloom tap, hazard buzz, three-beat pulse at the end of a run.
+
 ## Known limitations
 
 - Fonts load from Google Fonts and Fontshare; first paint uses system fallbacks, and full

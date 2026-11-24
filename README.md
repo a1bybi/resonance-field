@@ -5,10 +5,25 @@ expand a living energy field, release to contract, drag to carry it, and shift p
 gather drifting particles into singing clusters. Runs offline as an installable PWA.
 No accounts, no ads, no build step.
 
-- **Play:** open `index.html` through any static server (see below)
+- **Play now:** [resonancegame.pplx.app](https://resonancegame.pplx.app) — no install, works offline
+- **Run the source:** open `index.html` through any static server (see below)
 - **Size:** ~85 KB of HTML/CSS/JS (no framework, no audio files, two web fonts)
 - **Target:** modern mobile browsers first (iOS Safari 16+, Chrome Android), desktop second
 - **Licence:** MIT
+
+
+<p align="center">
+  <img src="media/social-card.png" alt="Resonance Field title card over a live gameplay screenshot" width="100%">
+</p>
+
+<p align="center">
+  <img src="media/title-mobile.png" alt="Title screen on a phone" width="24%">
+  <img src="media/play-mobile.png" alt="Mid-run on a phone: field bloomed, particles resonating, score 12,192" width="24%">
+  <img src="media/game-over-mobile.png" alt="Game-over card showing score, longest chain, resonances and duration" width="24%">
+  <img src="media/title-desktop.png" alt="Title screen on a desktop browser" width="24%">
+</p>
+
+<p align="center"><em>Left to right: title, a live run at 12,192 with a x4 chain, the closing card, and the desktop title. All captured from the build in this repository.</em></p>
 
 ---
 
@@ -112,7 +127,8 @@ resonance-field/
 ├── js/game.js            # engine: state, input, physics, resonance, render, loop
 ├── sw.js                 # service worker (network-first, cache fallback)
 ├── manifest.webmanifest  # PWA manifest
-├── icons/                # SVG app icons (any + maskable)
+├── icons/                # app icons (PNG any/maskable + SVG)
+├── media/                # screenshots and the link-preview card
 └── README.md, LICENSE, CONTRIBUTING.md, progress.md
 ```
 
@@ -184,6 +200,9 @@ ship a breaking change to force a clean slate.
 
 ## Accessibility & performance notes
 
+- Leaving the tab, locking the phone or taking a call auto-pauses the run instead of draining it.
+- Optional haptics: a light tap on a bloom, a firmer buzz on a hazard hit, a three-beat pulse when
+  the run ends. Silently skipped on devices without vibration.
 - All tap targets are at least 44 px; the mode button and pause button sit in thumb reach.
 - HUD text is `aria-live="off"` for scores and the queue is throttled, so screen readers
   are not spammed during play.

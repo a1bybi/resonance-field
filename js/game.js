@@ -38,6 +38,14 @@
   };
   var hypot = Math.hypot;
 
+  /* Optional vibration. Silent on devices that do not support it, and never
+     required for feedback — the visuals and audio carry the game on their own. */
+  function haptic(pattern) {
+    try {
+      if (navigator.vibrate) navigator.vibrate(pattern);
+    } catch (e) {}
+  }
+
   function hexA(hex, a) {
     var r = parseInt(hex.slice(1, 3), 16);
     var g = parseInt(hex.slice(3, 5), 16);
@@ -787,6 +795,7 @@
 
     var col = FREQS[source.freq].color;
     state.shake = Math.max(state.shake, group.length >= 3 ? 7 : 3.4);
+    haptic(group.length >= 4 ? 18 : 10);
     emitRipple(field.x, field.y, field.r * 0.55, col, 0.9);
     for (var k = 0; k < group.length; k++) {
       emitParticles(group[k].x, group[k].y, 16 + group.length * 4, col, 150, 0.9, 3.4);
@@ -824,6 +833,7 @@
             state.shake = Math.max(state.shake, 9);
             flash(0.5);
             RF.Audio.damage();
+            haptic(22);
           }
         }
         // A hazard brushing the very center is a heavy hit, not instant death.
@@ -835,6 +845,7 @@
           state.shake = Math.max(state.shake, 13);
           flash(0.7);
           RF.Audio.damage();
+          haptic(34);
           addScore(0, e.x, e.y, 'GRAZE', '#ff8a9d');
         }
       }
@@ -1462,6 +1473,7 @@
     syncStatus();
     RF.Audio.gameOver();
     state.shake = Math.max(state.shake, 8);
+    haptic([16, 70, 26]);
 
     setAudio(audioOn);
     el.overEyebrow.textContent = runMode === 'zen' ? 'Field complete' : 'The field settles';
@@ -1686,6 +1698,11 @@
     save: Save,
     end: endRun,
   };
+
+  /* Leaving the app mid-run should never cost the player a run. */
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden && phase === 'playing') doPause();
+  });
 
   /* Boot */
   resize();
