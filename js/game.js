@@ -439,7 +439,7 @@
       e.spin = rand(-1.6, 1.6);
     } else if (kind === 'hazard') {
       e.r = rand(13, 15);
-      e.mass = 0;
+      e.mass = 2.4; // heavy: it can be shoved, but not thrown
       e.spin = rand(-0.55, 0.55);
       e.vx *= 0.5;
       e.vy *= 0.5;
@@ -558,11 +558,24 @@
     var d = hypot(dx, dy) || 0.001;
     var infl = field.r * 1.26;
 
-    if (e.kind !== 'hazard' && field.mode !== 'neutral' && d < infl) {
+    /* Polarity, spelled out so it reads the way players expect:
+         harmonics and echoes  — attract pulls in, repel pushes out
+         dissonants            — resist attraction (attract does nothing), repel shoves them out
+         hazards               — repel shoves them out, weakly, since they are heavy
+       Repel is the defensive mode: nothing that can end a run is ever pulled in by it. */
+    if (field.mode !== 'neutral' && d < infl) {
       var t = 1 - d / infl;
       var power = 980 * t * t * (0.4 + 0.6 * field.hold);
-      var toward = field.mode === 'attract' ? 1 : -1;
-      if (e.kind === 'dissonant') toward = -toward;
+      var toward = 0;
+
+      if (e.kind === 'dissonant') {
+        // Dissonance is never gathered: attract nudges it away, repel shoves it.
+        toward = field.mode === 'repel' ? -1.15 : -0.55;
+      } else if (e.kind === 'hazard') {
+        if (field.mode === 'repel') toward = -0.8;
+      } else {
+        toward = field.mode === 'attract' ? 1 : -1;
+      }
 
       var ax = (dx / d) * power * toward;
       var ay = (dy / d) * power * toward;
@@ -573,8 +586,9 @@
         ay += (dx / d) * power * 0.3 * dt * 60 * 0.02;
       }
 
-      e.vx += (ax / e.mass) * dt;
-      e.vy += (ay / e.mass) * dt;
+      var m = Math.max(0.25, e.mass || 1);
+      e.vx += (ax / m) * dt;
+      e.vy += (ay / m) * dt;
     }
 
     // Hazard gravity wells bend nearby harmonics toward them
@@ -1487,7 +1501,7 @@
 
     var tips = [
       'Tip: switch to Neutral to hold a cluster without crushing it.',
-      'Tip: attract repels dissonants. Clear your core before it drains.',
+      'Tip: swarm a dissonant with Repel to shove it out of your core.',
       'Tip: three or more harmonics resonate much faster than two.',
       'Tip: echoes are worth a burst of score. Sweep through them.',
       'Tip: a large field drags hazards toward you. Bloom with intent.',

@@ -83,12 +83,14 @@ Everything orbits one idea: **resonance pays, dissonance drains**.
   quick chain multiplies the next.
 - **Neutrals** are convertible — they resonate with anything and build charge 45% faster.
   Treat them as glue.
-- **Dissonants** are the wrong note. They push away, resist, and drain coherence when they
-  crowd your core. Switch to **Repel** to shove them out, or leave them alone.
+- **Dissonants** are the wrong note. They resist attraction, and drain coherence when they
+  crowd your core. They are never gathered: Attract nudges them away weakly, **Repel** shoves
+  them clear.
 - **Core Echoes** are rare bright motes. Sweep the field through one for a big multiplier
   and a chunk of coherence back.
 - **Hazards** (spikes, wells) are pulled toward a large field. Keep the field small near
-  them; the deeper the field is expanded, the harder they home in.
+  them; the deeper the field is expanded, the harder they home in. **Repel** pushes them back
+  out, slowly — they are heavy, so start early.
 - **Coherence** is your life. It drains slowly, faster over time, and much faster when
   dissonants or hazards sit in your core. Blooms give some back.
 

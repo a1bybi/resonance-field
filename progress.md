@@ -73,6 +73,18 @@ now reads RMS ≈ 0.08 (previously near silence), which is the check worth repea
 mix change. Toggling sound on now plays a two-note confirmation so players can verify audio
 in one tap.
 
+## Polarity fix
+
+Reported: "It doesn't repel the pieces that end the game." Correct — hazards were excluded
+from field forces entirely, and dissonants reversed polarity, so Repel pulled them *in*. Both
+are lethal, so the defensive mode did not defend.
+
+- Hazards now feel the field when it is set to Repel, at reduced strength against their mass;
+  measured 34 → 113 px in one second, ~208 px in two, versus holding station under Attract.
+- Dissonants resist Attract (weak push out) and are shoved hard by Repel.
+- Hazards gained a real mass; they had 0, which only stayed harmless while they ignored the
+  field. Mass division is now floored so a zero mass can never produce NaN positions.
+
 ## Known limitations
 
 - Fonts load from Google Fonts and Fontshare; first paint uses system fallbacks, and full
