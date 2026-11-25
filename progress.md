@@ -110,3 +110,41 @@ are lethal, so the defensive mode did not defend.
    ≥5.3:1 against panels.
 7. Moved persistence to a cookie adapter and switched the service worker to network-first
    so new builds are never masked by the cache.
+8. Publish-readiness QA pass. Found and fixed a physics regression introduced in `741a0ed`:
+   the swirl force was rewritten so harmonics were pushed out of the field and scoring
+   stalled (a seeded comparison run ended on 637 points versus 3324 on the previous
+   commit). `applyForces` now keeps the original polarity and swirl behaviour with a
+   gentler 0.05 swirl plus a soft recall beyond `maxR * 1.9`, and the seeded run matches
+   the older build again.
+9. Fixed hazard damage stacking: two overlapping hazards drained coherence from 59 to 0
+   in 0.86 s. Damage per tick is now capped (`min(30, 17 + (hazards - 1) * 6)`) and the
+   same cap applies to dissonants (`min(18, dissonants * 6)`), bringing the drain to
+   roughly 24 per second with two hazards on screen.
+10. Made the Zen ending reachable: the pause card now shows an End session button that
+    ends the run, records `bestZen`, and persists it; leaving a paused Zen run to the
+    title also records the session.
+11. Fixed a bloom that stuck open after restarting from the pause card (pointer and field
+    state were not cleared in `startRun`).
+12. HUD BEST now shows the high score for the current mode (`max(best, bestZen)`), and
+    `endRun` also accepts the paused phase.
+13. The field is clamped inside the viewport on resize and rotation instead of drifting
+    off-screen.
+14. Muted audio no longer schedules voices every frame; `update()` returns early when the
+    engine is disabled.
+15. Accessibility and input: the viewport no longer blocks pinch zoom, and the status line
+    is a real button with an aria-label and a visible focus style instead of a tappable div.
+16. Removed a duplicate Zen entity spawn and a redundant branch in the render loop; GRAZE
+    now pays 8 points so its on-screen label means something.
+17. Bumped the service worker cache to `resonance-field-v4` so the new build is not served
+    from a stale cache.
+18. Verified after the fixes: seeded run 3324 points with all 9 harmonics in field, two-hazard
+    drain 59 to 0 in about 2.5 s, Zen end session records a best, restart from pause starts
+    clean, HUD best switches per mode, no horizontal overflow or clipped pause card across
+    seven viewports down to 320x568 and 844x390 landscape, offline play from cache v4,
+    audio RMS 0.13, 60.3 fps mobile / 53.1 fps desktop headless.
+19. Found during the final pass that the distance recall beacons were applying their force
+    away from the field instead of toward it, so harmonics drifted to the corners and
+    became stranded off-screen — dozens of them piling outside the frame, invisible and
+    unreachable, and crowding the entity budget. The recall is now an elliptical pull
+    toward the middle of the stage, so a drifted harmonic never ends up more than about
+    30 px outside the viewport and always comes back into play.

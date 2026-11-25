@@ -5,7 +5,7 @@
    and if the network is unavailable we serve the cached copy — which is what
    makes the game fully playable offline after the first visit. */
 
-const CACHE = 'resonance-field-v3';
+const CACHE = 'resonance-field-v4';
 const ASSETS = [
   './',
   './index.html',

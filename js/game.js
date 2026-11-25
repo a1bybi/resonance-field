@@ -148,6 +148,13 @@
       field.x = field.targetX = W / 2;
       field.y = field.targetY = H / 2;
       field.placed = true;
+    } else {
+      /* Rotation or a window resize must not leave the field stranded off the
+         new stage — clamp both the live position and the target. */
+      field.targetX = clamp(field.targetX, 0, W);
+      field.targetY = clamp(field.targetY, 0, H);
+      field.x = clamp(field.x, 0, W);
+      field.y = clamp(field.y, 0, H);
     }
   }
 
@@ -265,6 +272,7 @@
     overTip: document.getElementById('overTip'),
     overEyebrow: document.getElementById('overEyebrow'),
     overTitle: document.getElementById('overTitle'),
+    endSessionBtn: document.getElementById('endSessionBtn'),
     statusLine: document.getElementById('statusLine'),
     flash: document.getElementById('flash'),
   };
@@ -499,16 +507,14 @@
     }
     var diff = clamp(state.time / 150, 0, 1);
     var kind = pickKind(diff);
-    var freq = randInt(0, 3);
-    var e = spawnAtEdge(kind, freq);
 
     // Zen is a garden: mostly harmonics, few hazards.
     if (runMode === 'zen') {
       if (kind === 'hazard' && Math.random() < 0.75) kind = 'harmonic';
       if (kind === 'dissonant' && Math.random() < 0.5) kind = 'harmonic';
-      e = spawnAtEdge(kind, freq);
     }
-    entities.push(e);
+
+    entities.push(spawnAtEdge(kind, randInt(0, 3)));
   }
 
   function seedRun() {
@@ -553,107 +559,125 @@
   }
 
   function applyForces(e, dt) {
-  var dx = field.x - e.x;
-  var dy = field.y - e.y;
-  var d = hypot(dx, dy) || 0.001;
-  var infl = field.r * 1.26;
+    var dx = field.x - e.x;
+    var dy = field.y - e.y;
+    var d = hypot(dx, dy) || 0.001;
+    var infl = field.r * 1.26;
 
-  if (field.mode !== 'neutral' && d < infl) {
-    var t = 1 - d / infl;
-    var power = 980 * t * t * (0.45 + 0.55 * field.hold);
-    var toward = 0;
+    /* Polarity, spelled out so it reads the way players expect:
+         harmonics and echoes  — attract pulls in, repel pushes out
+         dissonants            — resist attraction, repel shoves them out
+         hazards               — repel shoves them out, weakly, since they are heavy
+       Repel is the defensive mode: nothing that can end a run is ever pulled in by it. */
+    if (field.mode !== 'neutral' && d < infl) {
+      var t = 1 - d / infl;
+      var power = 980 * t * t * (0.4 + 0.6 * field.hold);
+      var toward = 0;
 
-    if (e.kind === 'dissonant') {
-      // Always pushed away. Stronger in Repel.
-      toward = field.mode === 'repel' ? -1.45 : -0.65;
-    } else if (e.kind === 'hazard') {
-      // Only pushed in Repel.
-      if (field.mode === 'repel') toward = -1.1;
-    } else {
-      // Harmonics & Echoes
-      toward = field.mode === 'attract' ? 1.0 : -1.25; // stronger repel
+      if (e.kind === 'dissonant') {
+        // Dissonance is never gathered: attract nudges it away, repel shoves it.
+        toward = field.mode === 'repel' ? -1.15 : -0.55;
+      } else if (e.kind === 'hazard') {
+        if (field.mode === 'repel') toward = -0.8;
+      } else {
+        toward = field.mode === 'attract' ? 1 : -1;
+      }
+
+      var ax = (dx / d) * power * toward;
+      var ay = (dy / d) * power * toward;
+
+      /* A whisper of orbital drift, kept as a small fraction of the pull so a
+         cluster turns slowly instead of being flung out of the field. */
+      if ((e.kind === 'harmonic' || e.kind === 'echo') && field.mode === 'attract') {
+        ax += (-dy / d) * power * 0.05;
+        ay += (dx / d) * power * 0.05;
+      }
+
+      var m = Math.max(0.25, e.mass || 1);
+      e.vx += (ax / m) * dt;
+      e.vy += (ay / m) * dt;
     }
 
-    var ax = (dx / d) * power * toward;
-    var ay = (dy / d) * power * toward;
-
-    // Gentle orbital swirl only in Attract mode
-    if ((e.kind === 'harmonic' || e.kind === 'echo') && field.mode === 'attract') {
-      ax += (-dy / d) * power * 0.22;
-      ay += (dx / d) * power * 0.22;
+    /* Anything harmless that wanders past the edge of the stage is drawn back
+       toward the middle, so a run can never stall with its harmonics stranded
+       off-screen and out of reach. */
+    if (e.kind === 'harmonic' || e.kind === 'echo') {
+      var nx = (e.x - W * 0.5) / (W * 0.5);
+      var ny = (e.y - H * 0.5) / (H * 0.5);
+      var nr = hypot(nx, ny) || 0.001;
+      if (nr > 0.92) {
+        var home = Math.min(90, 26 + (nr - 0.92) * 220);
+        e.vx -= (nx / nr) * home * dt;
+        e.vy -= (ny / nr) * home * dt;
+      }
     }
 
-    var m = Math.max(0.25, e.mass || 1);
-    e.vx += (ax / m) * dt;
-    e.vy += (ay / m) * dt;
-  }
+    // Hazard gravity wells bend nearby harmonics toward them
+    if (e.kind === 'harmonic' || e.kind === 'echo') {
+      for (var i = 0; i < entities.length; i++) {
+        var h = entities[i];
+        if (h.kind !== 'hazard' || h.dead) continue;
+        var hx = h.x - e.x;
+        var hy = h.y - e.y;
+        var hd2 = hx * hx + hy * hy;
+        if (hd2 < 150 * 150 && hd2 > 1) {
+          var hd = Math.sqrt(hd2);
+          var hp = 42 * (1 - hd / 150);
+          e.vx += (hx / hd) * hp * dt;
+          e.vy += (hy / hd) * hp * dt;
+        }
+      }
+    }
 
-  // Hazard gravity wells (still attract nearby harmonics)
-  if (e.kind === 'harmonic' || e.kind === 'echo') {
-    for (var i = 0; i < entities.length; i++) {
-      var h = entities[i];
-      if (h.kind !== 'hazard' || h.dead) continue;
-      var hx = h.x - e.x;
-      var hy = h.y - e.y;
-      var hd2 = hx * hx + hy * hy;
-      if (hd2 < 150 * 150 && hd2 > 1) {
-        var hd = Math.sqrt(hd2);
-        var hp = 42 * (1 - hd / 150);
-        e.vx += (hx / hd) * hp * dt;
-        e.vy += (hy / hd) * hp * dt;
+    // Hazards are drawn toward a large field — blooming near one is dangerous.
+    if (e.kind === 'hazard' && field.mode !== 'repel') {
+      var pull = clamp((field.r - field.baseR) / (field.maxR - field.baseR), 0, 1);
+      pull *= pull;
+      var fdx = field.x - e.x;
+      var fdy = field.y - e.y;
+      var fd = hypot(fdx, fdy) || 1;
+      e.vx += (fdx / fd) * 34 * pull * dt;
+      e.vy += (fdy / fd) * 34 * pull * dt;
+    }
+
+    // Turbulence keeps the space breathing
+    e.vx += Math.sin(state.time * 0.6 + e.seed) * 5 * dt;
+    e.vy += Math.cos(state.time * 0.5 + e.seed * 1.7) * 5 * dt;
+
+    var drag = Math.pow(0.55, dt);
+    e.vx *= drag;
+    e.vy *= drag;
+
+    var speed = hypot(e.vx, e.vy);
+    var maxSpeed = e.kind === 'hazard' ? 120 : 430;
+    if (speed > maxSpeed) {
+      e.vx = (e.vx / speed) * maxSpeed;
+      e.vy = (e.vy / speed) * maxSpeed;
+    }
+
+    e.x += e.vx * dt;
+    e.y += e.vy * dt;
+    e.rot += e.spin * dt;
+    e.age += dt;
+    if (e.cooldown > 0) e.cooldown -= dt;
+    if (e.hitCd > 0) e.hitCd -= dt;
+
+    // Keep the population on stage: wrap harmless drifters, recycle the rest.
+    var pad = 120;
+    if (e.x < -pad || e.x > W + pad || e.y < -pad || e.y > H + pad) {
+      if (e.kind === 'harmonic' || e.kind === 'echo') {
+        e.x = clamp(e.x, -30, W + 30);
+        e.y = clamp(e.y, -30, H + 30);
+        var toX = field.x + rand(-120, 120);
+        var toY = field.y + rand(-120, 120);
+        var a = Math.atan2(toY - e.y, toX - e.x);
+        e.vx = Math.cos(a) * rand(30, 60);
+        e.vy = Math.sin(a) * rand(30, 60);
+      } else {
+        e.dead = true;
       }
     }
   }
-
-  // Special hazard pull — ONLY when NOT in Repel mode
-  if (e.kind === 'hazard' && field.mode !== 'repel') {
-    var pull = clamp((field.r - field.baseR) / (field.maxR - field.baseR), 0, 1);
-    pull *= pull;
-    var fdx = field.x - e.x;
-    var fdy = field.y - e.y;
-    var fd = hypot(fdx, fdy) || 1;
-    e.vx += (fdx / fd) * 34 * pull * dt;
-    e.vy += (fdy / fd) * 34 * pull * dt;
-  }
-
-  // Turbulence
-  e.vx += Math.sin(state.time * 0.6 + e.seed) * 5 * dt;
-  e.vy += Math.cos(state.time * 0.5 + e.seed * 1.7) * 5 * dt;
-
-  var drag = Math.pow(0.55, dt);
-  e.vx *= drag;
-  e.vy *= drag;
-
-  var speed = hypot(e.vx, e.vy);
-  var maxSpeed = e.kind === 'hazard' ? 120 : 430;
-  if (speed > maxSpeed) {
-    e.vx = (e.vx / speed) * maxSpeed;
-    e.vy = (e.vy / speed) * maxSpeed;
-  }
-
-  e.x += e.vx * dt;
-  e.y += e.vy * dt;
-  e.rot += e.spin * dt;
-  e.age += dt;
-  if (e.cooldown > 0) e.cooldown -= dt;
-  if (e.hitCd > 0) e.hitCd -= dt;
-
-  // Keep the population on stage
-  var pad = 120;
-  if (e.x < -pad || e.x > W + pad || e.y < -pad || e.y > H + pad) {
-    if (e.kind === 'harmonic' || e.kind === 'echo') {
-      e.x = clamp(e.x, -30, W + 30);
-      e.y = clamp(e.y, -30, H + 30);
-      var toX = field.x + rand(-120, 120);
-      var toY = field.y + rand(-120, 120);
-      var a = Math.atan2(toY - e.y, toX - e.x);
-      e.vx = Math.cos(a) * rand(30, 60);
-      e.vy = Math.sin(a) * rand(30, 60);
-    } else {
-      e.dead = true;
-    }
-  }
-}
 
   function updateEntities(dt) {
     for (var i = 0; i < entities.length; i++) {
@@ -831,14 +855,12 @@
 
       if (e.kind === 'dissonant' && d < field.r * 0.62) {
         dissonants++;
-        drain += 10;
-        emitParticles(e.x, e.y, 2, '#ff5a7a', 40, 0.6, 1.6);
+        if (Math.random() < 0.35) emitParticles(e.x, e.y, 2, '#ff5a7a', 40, 0.6, 1.6);
       }
 
       if (e.kind === 'hazard') {
         if (d < field.r * 0.65) {
           hazards++;
-          drain += 34;
           if (e.hitCd <= 0) {
             e.hitCd = 0.9;
             state.shake = Math.max(state.shake, 9);
@@ -857,7 +879,7 @@
           flash(0.7);
           RF.Audio.damage();
           haptic(34);
-          addScore(0, e.x, e.y, 'GRAZE', '#ff8a9d');
+          addScore(8, e.x, e.y, 'GRAZE', '#ff8a9d');
         }
       }
     }
@@ -866,6 +888,13 @@
       state.shake = Math.max(state.shake, 2 + dissonants * 1.2);
       if (Math.random() < dt * 6) RF.Audio.damage();
     }
+
+    /* Damage is capped rather than summed: two hazards in the core used to
+       drain 68 coherence a second, which ended a healthy run before a player
+       could react. The first hazard is still the expensive one, and each
+       extra adds diminishing pressure on top of it. */
+    if (hazards > 0) drain += Math.min(30, 17 + (hazards - 1) * 6);
+    if (dissonants > 0) drain += Math.min(18, dissonants * 6);
 
     if (entities.length > 38) drain += (entities.length - 38) * 0.35;
 
@@ -1350,8 +1379,7 @@
       ctx.translate(rand(-s, s) * 0.5, rand(-s, s) * 0.5);
     }
     drawBackground(t);
-    if (phase !== 'menu') drawField(t);
-    else drawField(t);
+    drawField(t);
     drawLinks();
     drawEntities(t);
     drawParticles();
@@ -1379,9 +1407,10 @@
       el.chainBadge.classList.toggle('is-on', state.chain >= 2);
       lastHud.chain = state.chain;
     }
-    if (state.best !== lastHud.best) {
-      el.bestInline.textContent = 'BEST ' + state.best.toLocaleString('en-GB');
-      lastHud.best = state.best;
+    var bestShown = Math.max(state.best, state.bestZen);
+    if (bestShown !== lastHud.best) {
+      el.bestInline.textContent = 'BEST ' + bestShown.toLocaleString('en-GB');
+      lastHud.best = bestShown;
     }
     if (Math.abs(state.shownScore - state.score) > 0.4) {
       state.shownScore += (state.score - state.shownScore) * 0.18;
@@ -1443,6 +1472,11 @@
     ripples.length = 0;
     texts.length = 0;
 
+    /* A finger can still be down on the canvas when a run ends; start clean so
+       the next run does not open mid-bloom. */
+    pointer.down = false;
+    pointer.id = null;
+    field.down = false;
     field.hold = 0;
     field.freq = 0;
     field.placed = true;
@@ -1469,7 +1503,9 @@
   }
 
   function endRun(cause) {
-    if (phase !== 'playing') return;
+    /* A Zen session can be ended on purpose from the pause card. */
+    if (phase !== 'playing' && phase !== 'paused') return;
+    hide(el.pause);
     phase = 'over';
     state.cause = cause || 'coherence';
     state.overTimer = 0;
@@ -1486,7 +1522,7 @@
     state.shake = Math.max(state.shake, 8);
     haptic([16, 70, 26]);
 
-    setAudio(audioOn);
+    syncStatus();
     el.overEyebrow.textContent = runMode === 'zen' ? 'Field complete' : 'The field settles';
     el.overTitle.textContent = runMode === 'zen' ? 'Session kept' : 'Run complete';
     el.finalScore.textContent = Math.round(state.score).toLocaleString('en-GB');
@@ -1518,6 +1554,7 @@
     phase = 'paused';
     field.down = false;
     pointer.down = false;
+    el.endSessionBtn.hidden = runMode !== 'zen';
     show(el.pause);
     RF.Audio.ui();
   }
@@ -1529,6 +1566,11 @@
   }
 
   function toMenu() {
+    /* Leaving a Zen run from the pause card still counts as a session. */
+    if (runMode === 'zen' && phase === 'paused') {
+      state.bestZen = Math.max(state.bestZen, state.score);
+      persist();
+    }
     phase = 'menu';
     hide(el.pause);
     hide(el.over);
@@ -1568,6 +1610,9 @@
   el.menuBtn.addEventListener('click', toMenu);
   el.quitBtn.addEventListener('click', toMenu);
   el.resumeBtn.addEventListener('click', doResume);
+  el.endSessionBtn.addEventListener('click', function () {
+    endRun('zen');
+  });
   el.restartBtn.addEventListener('click', function () {
     hide(el.pause);
     startRun(runMode);

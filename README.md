@@ -101,7 +101,8 @@ and the field settles.
 
 - **Endless Resonance** — the main mode, escalating pressure, one high score.
 - **Zen Field** — same physics, coherence never drains, no failures. For practice and for
-  playing with the instrument.
+  playing with the instrument. A Zen session has no ending of its own: pause and choose
+  **End session** when you are done, and the score card records it as a Zen best.
 - **Daily Pulse** and **Resonance Trials** are designed in the GDD but not in this build
   (see [Roadmap](#roadmap)).
 
@@ -113,7 +114,8 @@ and the field settles.
 | Core Echo | `180 × chain multiplier` |
 | Style / near-miss bonuses | small, awarded on tight sweeps |
 
-Chain multiplier grows by 0.3 per consecutive bloom and decays after ~1.7 s without one.
+Chain multiplier grows by 0.3 per consecutive bloom and resets after 3.4 s without one
+(the 1.7 s figure is the per-entity cooldown before it can bloom again).
 Progression is cosmetic only: field themes (Aurora, Ember, Abyss) are chosen on the title
 screen and remembered locally.
 
@@ -165,8 +167,8 @@ The ones you will most likely want to touch:
 | `MAX_ENTITIES` / `MAX_PARTICLES` | config | Hard caps for object pools |
 | `baseR`, `maxR` | `resize()` | Field radius at rest and fully bloomed |
 | `hold` ramp (0.55 s / 0.28 s) | input | How fast the field blooms and collapses |
-| `drain` in `updateCoherence()` | simulation | Base coherence loss per second |
-| `+10`, `+34`, `>38` | `updateCoherence()` | Dissonant, hazard and overgrowth penalties |
+| base `drain` in `updateCoherence()` | simulation | Coherence loss per second, 1.05 rising to 2.3 |
+| hazard / dissonant / crowding terms | `updateCoherence()` | 17/s per hazard (diminishing, capped at 30), 6/s per dissonant (capped at 18), +0.35/s beyond 38 entities |
 | `26 × group × mult` | `fireResonance()` | Bloom scoring |
 | `0.52` link rate, `1.7 s` cooldown | resonance | Chain pacing |
 
@@ -216,6 +218,9 @@ ship a breaking change to force a clean slate.
   are not spammed during play.
 - Colour is never the only signal: frequencies also differ in edge style and audio pitch.
 - `prefers-reduced-motion` dampens shake, flash and particle counts.
+- The viewport is zoomable: pinching the title and cards is not blocked (the play canvas
+  keeps `touch-action: none` so drags still steer the field).
+- The title-screen sound control is a real button, reachable by keyboard and screen reader.
 - Geometry uses device-pixel-ratio capped at 2, so 3× phones render at 2× rather than
   paying 9× fill cost.
 - Layout verified without overflow at 320×568, 375×667, 390×844, 844×390 and 1440×900.

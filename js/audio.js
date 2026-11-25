@@ -289,7 +289,8 @@ RF.Audio = (function () {
 
   /* Slow generative bell that drifts through the scale while playing. */
   function update(dt, intensity) {
-    if (!ctx || !started) return;
+    /* Muted: don't schedule voices that the master gain would silence anyway. */
+    if (!ctx || !started || !enabled) return;
     shimmerTimer -= dt;
     if (shimmerTimer <= 0) {
       shimmerTimer = 3.2 + Math.random() * 3.4;
