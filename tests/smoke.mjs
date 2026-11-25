@@ -101,6 +101,25 @@ if (await endBtn.isVisible()) {
   check('zen session ends with a result', zen.phase === 'over', zen.phase);
 }
 
+// Records are kept separately per mode, and the HUD follows the selection.
+await page.evaluate(() => {
+  window.__rf.menu();
+  window.__rf.start('endless');
+  window.__rf.state.score = 1234;
+  window.__rf.end();
+});
+await page.waitForTimeout(300);
+const endlessBest = await page.textContent('#bestInline');
+await page.evaluate(() => window.__rf.menu());
+await page.locator('[data-runmode="zen"]').click();
+await page.waitForTimeout(200);
+const zenBest = await page.textContent('#bestInline');
+check(
+  'best score is per mode',
+  endlessBest === 'BEST 1,234' && !zenBest.includes('1,234'),
+  `endless=${endlessBest} zen=${zenBest}`
+);
+
 check('no console or page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
 
 await browser.close();

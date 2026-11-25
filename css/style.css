@@ -762,6 +762,10 @@ body.is-muted .icon-btn .wave {
   font-weight: 700;
 }
 
+.final__best.is-record {
+  color: var(--accent);
+}
+
 .stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

@@ -308,9 +308,28 @@
     emitRipple(field.x, field.y, field.r * 1.05, FREQS[field.freq].color, 0.6);
   }
 
+  /* Each mode keeps its own record: Endless is survival, Zen is a garden. */
+  function bestFor(mode) {
+    return mode === 'zen' ? state.bestZen : state.best;
+  }
+
+  function modeName(mode) {
+    return mode === 'zen' ? 'Zen' : 'Endless';
+  }
+
   function syncStatus() {
     el.statusLine.textContent =
-      (audioOn ? 'Sound on' : 'Sound off') + ' · best ' + Math.max(state.best, state.bestZen).toLocaleString('en-GB');
+      (audioOn ? 'Sound on' : 'Sound off') +
+      ' · ' + modeName(runMode).toLowerCase() + ' best ' + bestFor(runMode).toLocaleString('en-GB');
+  }
+
+  /* Reflect the selected mode's record immediately, not only while playing. */
+  function syncBest() {
+    var n = bestFor(runMode);
+    el.bestInline.textContent = 'BEST ' + n.toLocaleString('en-GB');
+    el.bestInline.setAttribute('aria-label', 'Best in ' + modeName(runMode) + ': ' + n.toLocaleString('en-GB'));
+    lastHud.bestKey = '';
+    syncStatus();
   }
 
   function setAudio(on) {
@@ -1388,7 +1407,7 @@
     ctx.restore();
   }
 
-  var lastHud = { score: -1, coh: -1, chain: -1, best: -1 };
+  var lastHud = { score: -1, coh: -1, chain: -1, bestKey: '' };
 
   function hudSync() {
     var shown = Math.round(state.shownScore);
@@ -1407,10 +1426,13 @@
       el.chainBadge.classList.toggle('is-on', state.chain >= 2);
       lastHud.chain = state.chain;
     }
-    var bestShown = Math.max(state.best, state.bestZen);
-    if (bestShown !== lastHud.best) {
+    var bestShown = bestFor(runMode);
+    var bestKey = runMode + ':' + bestShown;
+    if (bestKey !== lastHud.bestKey) {
       el.bestInline.textContent = 'BEST ' + bestShown.toLocaleString('en-GB');
-      lastHud.best = bestShown;
+      el.bestInline.setAttribute('aria-label', 'Best in ' + modeName(runMode) + ': ' + bestShown.toLocaleString('en-GB'));
+      lastHud.bestKey = bestKey;
+      syncStatus();
     }
     if (Math.abs(state.shownScore - state.score) > 0.4) {
       state.shownScore += (state.score - state.shownScore) * 0.18;
@@ -1511,12 +1533,15 @@
     state.overTimer = 0;
     state.chain = 0;
 
+    var previousBest = bestFor(runMode);
+    var isRecord = state.score > previousBest && state.score >= 1;
     if (runMode === 'zen') {
       state.bestZen = Math.max(state.bestZen, state.score);
     } else {
       if (state.score > state.best) state.best = state.score;
     }
     persist();
+    syncBest();
     syncStatus();
     RF.Audio.gameOver();
     state.shake = Math.max(state.shake, 8);
@@ -1526,7 +1551,12 @@
     el.overEyebrow.textContent = runMode === 'zen' ? 'Field complete' : 'The field settles';
     el.overTitle.textContent = runMode === 'zen' ? 'Session kept' : 'Run complete';
     el.finalScore.textContent = Math.round(state.score).toLocaleString('en-GB');
-    el.finalBest.textContent = 'BEST ' + Math.max(state.best, state.bestZen).toLocaleString('en-GB');
+    el.finalBest.textContent =
+      (isRecord ? 'NEW ' : '') +
+      modeName(runMode).toUpperCase() +
+      ' BEST ' +
+      Math.round(bestFor(runMode)).toLocaleString('en-GB');
+    el.finalBest.classList.toggle('is-record', isRecord);
     el.statChain.textContent = state.bestChain;
     el.statReso.textContent = state.resonances;
     var secs = Math.floor(state.time);
@@ -1641,6 +1671,7 @@
         b.classList.toggle('is-active', on);
         b.setAttribute('aria-selected', on ? 'true' : 'false');
       });
+      syncBest();
       RF.Audio.ui();
     });
   });
@@ -1776,7 +1807,7 @@
   document.querySelectorAll('[data-theme]').forEach(function (b) {
     b.classList.toggle('is-active', b.getAttribute('data-theme') === THEMES[themeIndex].id);
   });
-  el.bestInline.textContent = 'BEST ' + Math.max(state.best, state.bestZen).toLocaleString('en-GB');
+  syncBest();
   raf = requestAnimationFrame(frame);
 
   /* PWA: register only in a normal (non-sandboxed) hosting context. */
