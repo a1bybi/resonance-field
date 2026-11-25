@@ -1,0 +1,19 @@
+{
+  "name": "resonance-field",
+  "version": "1.0.0",
+  "private": true,
+  "description": "One-thumb physics-driven browser game. Canvas 2D + generative Web Audio, installable PWA.",
+  "homepage": "https://resonancegame.pplx.app/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/a1bybi/resonance-field.git"
+  },
+  "scripts": {
+    "build": "tools/build-dist.sh",
+    "serve": "python3 -m http.server 8099 --directory dist",
+    "test": "node tests/smoke.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.59.0"
+  }
+}

@@ -52,9 +52,35 @@ Once installed it launches full-screen and plays with no network connection.
 
 ### Deploy
 
-It is a static site — drop the folder on Netlify, Vercel, Cloudflare Pages, GitHub Pages or
-any web server. The only requirement is HTTPS for the PWA parts. `index.html` must be at the
-site root so `./sw.js` and `./manifest.webmanifest` resolve.
+**Live site: [resonancegame.pplx.app](https://resonancegame.pplx.app)**
+
+The live page is served from `dist/`, a bundle generated from a commit and never edited by
+hand:
+
+```bash
+./tools/build-dist.sh   # assembles dist/ and writes dist/version.json
+```
+
+`dist/version.json` records the full commit SHA, the branch and the build time, and the title
+screen prints the short SHA as a build stamp. Publishing `dist/` unchanged is what keeps the
+live site identical to `master`.
+
+Two checks guard the link between the repository and the live page:
+
+- **Verify** runs on every push and pull request: syntax check, a check that the bundle is
+  stamped with that exact commit and built from a clean tree, then a headless smoke test of
+  the player flows in `tests/smoke.mjs`.
+- **Live matches master** runs each morning and on demand: it reads the live
+  `/version.json`, compares the commit with `master`, then compares SHA-256 hashes of
+  `index.html`, `css/style.css`, `js/game.js`, `js/audio.js`, `js/build-stamp.js` and `sw.js`.
+  It opens or updates an issue when the live site falls behind.
+
+To publish an update: run `./tools/build-dist.sh`, deploy the `dist/` folder, then check that
+the build stamp on the title screen matches `git rev-parse --short HEAD`.
+
+Any static host works for a copy of the site — Netlify, Vercel, Cloudflare Pages, GitHub
+Pages or a plain web server. The only requirement is HTTPS for the PWA parts, and
+`index.html` has to sit at the site root so `./sw.js` and `./manifest.webmanifest` resolve.
 
 ---
 

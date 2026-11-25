@@ -148,3 +148,11 @@ are lethal, so the defensive mode did not defend.
     unreachable, and crowding the entity budget. The recall is now an elliptical pull
     toward the middle of the stage, so a drifted harmonic never ends up more than about
     30 px outside the viewport and always comes back into play.
+
+20. Made the live site traceable to the repository. `tools/build-dist.sh` now assembles the
+    publishable `dist/` folder from tracked files and writes `dist/version.json` with the
+    exact commit, branch and build time; `js/build-stamp.js` shows the short SHA under the
+    title card. Added a Verify workflow that runs a syntax check, asserts the bundle is
+    stamped with the pushed commit and built from a clean tree, and runs `tests/smoke.mjs`
+    headlessly. Added a daily "Live matches master" workflow that compares the live build
+    stamp and asset hashes against master and opens an issue when the live page drifts.

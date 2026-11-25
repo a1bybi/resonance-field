@@ -1,0 +1,54 @@
+name: Verify
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  smoke:
+    name: Build and smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Syntax check
+        run: for f in js/*.js sw.js; do node --check "$f"; done
+
+      - name: Install test dependencies
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Build the publishable bundle
+        run: ./tools/build-dist.sh
+
+      - name: Confirm the bundle is stamped with this commit
+        run: |
+          node -e "
+            const v = require('./dist/version.json');
+            const sha = process.env.GITHUB_SHA;
+            if (v.commit !== sha) { console.error('bundle stamped', v.commit, 'expected', sha); process.exit(1); }
+            if (v.dirty) { console.error('bundle built from a dirty tree'); process.exit(1); }
+            console.log('bundle stamped with', v.short);
+          "
+
+      - name: Run the game
+        run: |
+          python3 -m http.server 8099 --directory dist &
+          for i in $(seq 1 30); do curl -sf http://localhost:8099/index.html >/dev/null && break; sleep 0.5; done
+          node tests/smoke.mjs
+
+      - name: Upload screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failure-artifacts
+          path: |
+            dist/version.json
+          if-no-files-found: ignore

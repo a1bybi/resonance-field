@@ -1,0 +1,69 @@
+name: Live matches master
+
+# The site is published from dist/ by tools/build-dist.sh, so every published
+# byte carries the commit it came from in version.json. This job is the alarm
+# that tells you when the live page has fallen behind master.
+
+on:
+  schedule:
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  drift:
+    name: Compare live site with master
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch the live build stamp
+        id: live
+        run: |
+          set -euo pipefail
+          base="https://resonancegame.pplx.app"
+          curl -fsS "$base/version.json" -o live-version.json
+          cat live-version.json
+          echo "commit=$(node -p "require('./live-version.json').commit")" >> "$GITHUB_OUTPUT"
+
+      - name: Compare file hashes
+        id: hashes
+        run: |
+          set -euo pipefail
+          base="https://resonancegame.pplx.app"
+          bad=0
+          for f in index.html css/style.css js/game.js js/audio.js js/build-stamp.js sw.js; do
+            curl -fsS "$base/$f" -o live.tmp
+            a=$(sha256sum live.tmp | cut -d' ' -f1)
+            b=$(sha256sum "$f" | cut -d' ' -f1)
+            if [ "$a" != "$b" ]; then echo "::error file=$f::live copy differs from master"; bad=1; else echo "match  $f"; fi
+          done
+          exit $bad
+
+      - name: Report
+        if: always()
+        run: |
+          {
+            echo "### Live site vs master"
+            echo
+            echo "- live commit: \`${{ steps.live.outputs.commit }}\`"
+            echo "- master commit: \`${{ github.sha }}\`"
+            if [ "${{ steps.live.outputs.commit }}" = "${{ github.sha }}" ]; then
+              echo "- status: up to date"
+            else
+              echo "- status: **behind** — rebuild with \`./tools/build-dist.sh\` and publish \`dist/\`"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Open an issue when the live site is behind
+        if: steps.live.outputs.commit != github.sha
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          title="Live site is behind master"
+          body=$(printf 'The published site reports `%s` but master is `%s`.\n\nRepublish by running `./tools/build-dist.sh` and deploying the `dist/` folder.\n' "${{ steps.live.outputs.commit }}" "${{ github.sha }}")
+          existing=$(gh issue list --state open --search "$title in:title" --json number --jq '.[0].number // empty')
+          if [ -z "$existing" ]; then gh issue create --title "$title" --body "$body"; else gh issue comment "$existing" --body "$body"; fi

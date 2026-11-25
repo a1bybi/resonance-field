@@ -51,6 +51,17 @@ Before opening a pull request:
 The debug hooks (`window.__rf`, `advanceTime`, `render_game_to_text`) make scripted checks
 easy if you want to automate any of this.
 
+There is also an automated smoke test that runs the same flows headlessly:
+
+```bash
+npm install                 # Playwright, dev only
+./tools/build-dist.sh       # bundle the current commit into dist/
+npm run serve &             # serves dist/ on http://localhost:8099
+npm test                    # title, begin, bloom, pause, resume, modes, Zen ending
+```
+
+CI runs it on every push, and compares the live site against `master` daily.
+
 ## Pull requests
 
 Keep them focused, describe the player-visible change, and mention the devices you tested

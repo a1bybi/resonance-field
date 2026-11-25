@@ -855,3 +855,18 @@ body.is-muted .icon-btn .wave {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Build stamp — the commit the live page was published from. */
+.build {
+  margin: 12px 0 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-2, rgba(255, 255, 255, 0.55));
+  opacity: 0.75;
+}
+
+.build[hidden] {
+  display: none;
+}
