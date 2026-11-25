@@ -5,7 +5,7 @@ expand a living energy field, release to contract, drag to carry it, and shift p
 gather drifting particles into singing clusters. Runs offline as an installable PWA.
 No accounts, no ads, no build step.
 
-- **Play now:** [resonancegame.pplx.app](https://resonancegame.pplx.app) — no install, works offline
+- **Play now:** [resonancefield.pplx.app](https://resonancefield.pplx.app) — no install, works offline
 - **Run the source:** open `index.html` through any static server (see below)
 - **Size:** ~85 KB of HTML/CSS/JS (no framework, no audio files, two web fonts)
 - **Target:** modern mobile browsers first (iOS Safari 16+, Chrome Android), desktop second
@@ -52,7 +52,7 @@ Once installed it launches full-screen and plays with no network connection.
 
 ### Deploy
 
-**Live site: [resonancegame.pplx.app](https://resonancegame.pplx.app)**
+**Live site: [resonancefield.pplx.app](https://resonancefield.pplx.app)**
 
 The live page is served from `dist/`, a bundle generated from a commit and never edited by
 hand:

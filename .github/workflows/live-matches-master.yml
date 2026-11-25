@@ -24,7 +24,7 @@ jobs:
         id: live
         run: |
           set -euo pipefail
-          base="https://resonancegame.pplx.app"
+          base="https://resonancefield.pplx.app"
           curl -fsS "$base/version.json" -o live-version.json
           cat live-version.json
           echo "commit=$(node -p "require('./live-version.json').commit")" >> "$GITHUB_OUTPUT"
@@ -33,7 +33,7 @@ jobs:
         id: hashes
         run: |
           set -euo pipefail
-          base="https://resonancegame.pplx.app"
+          base="https://resonancefield.pplx.app"
           bad=0
           for f in index.html css/style.css js/game.js js/audio.js js/build-stamp.js sw.js; do
             curl -fsS "$base/$f" -o live.tmp

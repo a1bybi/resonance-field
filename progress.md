@@ -156,3 +156,9 @@ are lethal, so the defensive mode did not defend.
     stamped with the pushed commit and built from a clean tree, and runs `tests/smoke.mjs`
     headlessly. Added a daily "Live matches master" workflow that compares the live build
     stamp and asset hashes against master and opens an issue when the live page drifts.
+
+21. Published the QA build to `resonancefield.pplx.app`, a permanent address tied to a site
+    record this workspace can update on every release. The old `resonancegame.pplx.app`
+    publication is orphaned — no app in the library owns it — so its address could not be
+    reused; every canonical, Open Graph, README, package and workflow URL now points at the
+    new address. The daily drift check reads the new domain.
